@@ -7,8 +7,47 @@ class MoviesController < ApplicationController
   end
 
   def index
-    @movies = Movie.all
-  end
+    @all_ratings = Movie.all_ratings
+  
+    # --- Ratings ---
+    if params[:ratings].present?
+      # Some boxes checked
+      @ratings_to_show = params[:ratings].keys
+      session[:ratings] = params[:ratings]
+    elsif params[:commit] == "Refresh"
+      # User hit Refresh but unchecked everything -> treat as all selected
+      @ratings_to_show = @all_ratings
+      session.delete(:ratings)
+    elsif session[:ratings].present?
+      # No new params, reuse session
+      @ratings_to_show = session[:ratings].keys
+    else
+      # First visit
+      @ratings_to_show = @all_ratings
+    end
+  
+    # --- Sort ---
+    if params[:sort].present?
+      sort = params[:sort]
+      session[:sort] = sort
+    elsif session[:sort].present?
+      sort = session[:sort]
+    else
+      sort = nil
+    end
+  
+    # --- Movies + Highlighting ---
+    case sort
+    when 'title'
+      @movies = Movie.with_ratings(@ratings_to_show).order(:title)
+      @title_header = 'hilite bg-warning'
+    when 'release_date'
+      @movies = Movie.with_ratings(@ratings_to_show).order(:release_date)
+      @release_date_header = 'hilite bg-warning'
+    else
+      @movies = Movie.with_ratings(@ratings_to_show)
+    end
+  end   
 
   def new
     # default: render 'new' template
